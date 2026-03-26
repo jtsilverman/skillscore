@@ -1,5 +1,12 @@
 package analyzer
 
+import (
+	"fmt"
+	"path/filepath"
+
+	"github.com/jtsilverman/skillscore/internal/parser"
+)
+
 // SkillReport is the complete analysis of a single skill.
 type SkillReport struct {
 	Path        string         `json:"path"`
@@ -82,8 +89,67 @@ func PointsToGrade(points float64) string {
 
 // AnalyzeSkill scores a skill at the given directory path.
 func AnalyzeSkill(path string) (*SkillReport, error) {
-	// Will be wired up in Task 2.6
+	result, err := parser.ParseSkillDir(path)
+	if err != nil {
+		return nil, fmt.Errorf("parse skill at %s: %w", path, err)
+	}
+
+	md := parser.AnalyzeMarkdown(result.Body)
+
+	// Score each dimension
+	structure := ScoreStructure(path, result)
+	description := ScoreDescription(result)
+	content := ScoreContent(path, result, md)
+	engineering := ScoreEngineering(path, result)
+	packaging := ScorePackaging(path, md)
+
+	// Compute weighted overall score
+	overall := structure.Points*WeightStructure +
+		description.Points*WeightDescription +
+		content.Points*WeightContent +
+		engineering.Points*WeightEngineering +
+		packaging.Points*WeightPackaging
+
+	// Extract skill name
+	name := filepath.Base(path)
+	if result.Frontmatter != nil && result.Frontmatter.Name != "" {
+		name = result.Frontmatter.Name
+	}
+
+	// Generate suggestions from failed checks
+	suggestions := generateSuggestions(structure, description, content, engineering, packaging)
+
 	return &SkillReport{
-		Path: path,
+		Path:        path,
+		Name:        name,
+		Overall:     Score{Points: overall, Grade: PointsToGrade(overall)},
+		Structure:   structure,
+		Description: description,
+		Content:     content,
+		Engineering: engineering,
+		Packaging:   packaging,
+		Suggestions: suggestions,
 	}, nil
+}
+
+func generateSuggestions(dims ...DimensionScore) []Suggestion {
+	var suggestions []Suggestion
+	for _, dim := range dims {
+		for _, c := range dim.Checks {
+			if c.Passed {
+				continue
+			}
+			priority := "low"
+			if c.Weight >= 25 {
+				priority = "high"
+			} else if c.Weight >= 15 {
+				priority = "medium"
+			}
+			suggestions = append(suggestions, Suggestion{
+				Priority: priority,
+				Message:  c.Detail,
+			})
+		}
+	}
+	return suggestions
 }
