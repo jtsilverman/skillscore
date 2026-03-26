@@ -10,6 +10,7 @@ import (
 
 	"github.com/jtsilverman/skillscore/internal/analyzer"
 	"github.com/jtsilverman/skillscore/internal/github"
+	"github.com/jtsilverman/skillscore/internal/indexer"
 	"github.com/jtsilverman/skillscore/internal/report"
 )
 
@@ -116,7 +117,20 @@ func runScan(args []string) {
 }
 
 func runIndex(args []string) {
-	fmt.Println("index: not yet implemented")
+	output := "scored-index.json"
+	// Parse --output flag from args
+	for i, a := range args {
+		if a == "--output" && i+1 < len(args) {
+			output = args[i+1]
+		}
+	}
+
+	fmt.Fprintf(os.Stderr, "Indexing skills from curated sources...\n")
+	if err := indexer.RunIndex(output); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Fprintf(os.Stderr, "Index written to %s\n", output)
 }
 
 func runGitHub(args []string) {

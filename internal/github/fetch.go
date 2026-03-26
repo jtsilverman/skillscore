@@ -91,10 +91,18 @@ func FetchSkill(spec string) (string, func(), error) {
 	return tmpDir, cleanup, nil
 }
 
-type ghEntry struct {
+// DirEntry represents a file or directory in a GitHub repo.
+type DirEntry struct {
 	Name string `json:"name"`
 	Path string `json:"path"`
 	Type string `json:"type"` // "file" or "dir"
+}
+
+// ListDir lists the contents of a directory in a GitHub repo.
+func ListDir(owner, repo, path string) ([]DirEntry, error) {
+	client := &http.Client{}
+	token := os.Getenv("GITHUB_TOKEN")
+	return fetchDirListing(client, token, owner, repo, path)
 }
 
 func fetchFile(client *http.Client, token, owner, repo, path string) ([]byte, error) {
@@ -134,7 +142,7 @@ func fetchFile(client *http.Client, token, owner, repo, path string) ([]byte, er
 	return io.ReadAll(resp.Body)
 }
 
-func fetchDirListing(client *http.Client, token, owner, repo, path string) ([]ghEntry, error) {
+func fetchDirListing(client *http.Client, token, owner, repo, path string) ([]DirEntry, error) {
 	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/contents/%s", owner, repo, path)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -155,7 +163,7 @@ func fetchDirListing(client *http.Client, token, owner, repo, path string) ([]gh
 		return nil, fmt.Errorf("HTTP %d listing %s", resp.StatusCode, path)
 	}
 
-	var entries []ghEntry
+	var entries []DirEntry
 	if err := json.NewDecoder(resp.Body).Decode(&entries); err != nil {
 		return nil, err
 	}

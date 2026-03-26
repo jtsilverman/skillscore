@@ -11,6 +11,7 @@ import (
 type SkillReport struct {
 	Path        string         `json:"path"`
 	Name        string         `json:"name"`
+	Desc        string         `json:"description"`
 	Overall     Score          `json:"overall"`
 	Structure   DimensionScore `json:"structure"`
 	Description DimensionScore `json:"description"`
@@ -110,10 +111,14 @@ func AnalyzeSkill(path string) (*SkillReport, error) {
 		engineering.Points*WeightEngineering +
 		packaging.Points*WeightPackaging
 
-	// Extract skill name
+	// Extract skill name and description
 	name := filepath.Base(path)
-	if result.Frontmatter != nil && result.Frontmatter.Name != "" {
-		name = result.Frontmatter.Name
+	desc := ""
+	if result.Frontmatter != nil {
+		if result.Frontmatter.Name != "" {
+			name = result.Frontmatter.Name
+		}
+		desc = result.Frontmatter.Description
 	}
 
 	// Generate suggestions from failed checks
@@ -122,6 +127,7 @@ func AnalyzeSkill(path string) (*SkillReport, error) {
 	return &SkillReport{
 		Path:        path,
 		Name:        name,
+		Desc:        desc,
 		Overall:     Score{Points: overall, Grade: PointsToGrade(overall)},
 		Structure:   structure,
 		Description: description,
