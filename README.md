@@ -12,6 +12,8 @@ SkillScore turns Anthropic's qualitative [authoring checklist](https://platform.
 
 ## Demo
 
+![SkillScore output](assets/demo.png)
+
 ```
 $ skillscore ~/.claude/skills/deploy/
 
