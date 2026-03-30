@@ -124,8 +124,8 @@ func TreeDiscover(owner, repo string) ([]string, error) {
 	client := &http.Client{}
 	token := os.Getenv("GITHUB_TOKEN")
 
-	// Try "main" branch first, fall back to "HEAD"
-	branches := []string{"main", "HEAD"}
+	// Try common default branch names
+	branches := []string{"main", "master", "HEAD"}
 	var treeResp treeResponse
 	var lastErr error
 
