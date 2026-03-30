@@ -87,9 +87,27 @@ header p { color: var(--text-dim); font-size: 1rem; }
   margin-bottom: 1.5rem;
   color: var(--text-dim);
   font-size: 0.9rem;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
 .stats strong { color: var(--text); }
+
+.submit-btn {
+  margin-left: auto;
+  padding: 0.4rem 0.9rem;
+  border: 1px solid var(--green);
+  border-radius: 6px;
+  color: var(--green);
+  text-decoration: none;
+  font-size: 0.85rem;
+  transition: all 0.15s;
+}
+
+.submit-btn:hover {
+  background: rgba(34,197,94,0.1);
+  text-decoration: none;
+}
 
 .skill-list { display: flex; flex-direction: column; gap: 0.6rem; }
 
@@ -132,7 +150,20 @@ header p { color: var(--text-dim); font-size: 1rem; }
 .skill-name { font-weight: 600; font-size: 1.05rem; }
 .skill-score { color: var(--text-dim); font-size: 0.85rem; margin-left: auto; }
 .skill-desc { color: var(--text-dim); font-size: 0.9rem; margin-bottom: 0.5rem; padding-left: 3.2rem; }
-.skill-meta { display: flex; gap: 1rem; padding-left: 3.2rem; font-size: 0.8rem; color: var(--text-dim); }
+.skill-meta { display: flex; gap: 1rem; padding-left: 3.2rem; font-size: 0.8rem; color: var(--text-dim); align-items: center; flex-wrap: wrap; }
+
+.source-badge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.source-official { background: rgba(250,204,21,0.15); color: var(--yellow); }
+.source-local { background: rgba(34,197,94,0.15); color: var(--green); }
+.source-community { background: rgba(59,130,246,0.1); color: var(--blue); }
 .skill-meta a { color: var(--blue); text-decoration: none; }
 .skill-meta a:hover { text-decoration: underline; }
 
@@ -173,6 +204,29 @@ header p { color: var(--text-dim); font-size: 1rem; }
   padding: 3rem;
   color: var(--text-dim);
 }
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+  font-size: 0.9rem;
+}
+
+.pagination button {
+  padding: 0.4rem 0.8rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.pagination button:hover { border-color: var(--text-dim); }
+.pagination button:disabled { opacity: 0.3; cursor: default; }
+.pagination .page-info { color: var(--text-dim); }
 
 footer {
   text-align: center;

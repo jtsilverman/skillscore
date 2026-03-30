@@ -95,6 +95,9 @@ func RunIndexFull(sources []Source, localSources []LocalSource, outputPath strin
 
 	wg.Wait()
 
+	// Deduplicate: same name + same repo from different sources keeps highest score
+	entries = dedup(entries)
+
 	idx := Index{
 		Skills:    entries,
 		Count:     len(entries),
@@ -244,6 +247,33 @@ func discoverSkills(src Source) []string {
 
 	fmt.Fprintf(os.Stderr, "  Discovered %d skills in %s/%s\n", len(paths), src.Owner, src.Repo)
 	return paths
+}
+
+// dedup removes duplicate skills. Key: lowercase name + repo.
+// Same name + same repo from different sources: keep highest score.
+// Same name + different repos: keep both.
+func dedup(entries []IndexEntry) []IndexEntry {
+	type key struct{ name, repo string }
+	best := make(map[key]int) // key -> index in result slice
+	var result []IndexEntry
+
+	for _, e := range entries {
+		k := key{strings.ToLower(strings.TrimSpace(e.Name)), e.Repo}
+		if idx, exists := best[k]; exists {
+			if e.Score > result[idx].Score {
+				result[idx] = e
+			}
+		} else {
+			best[k] = len(result)
+			result = append(result, e)
+		}
+	}
+
+	removed := len(entries) - len(result)
+	if removed > 0 {
+		fmt.Fprintf(os.Stderr, "Dedup: removed %d duplicates (%d -> %d)\n", removed, len(entries), len(result))
+	}
+	return result
 }
 
 // discoverSkillsFallback uses the Contents API (capped at 1000 items) as a fallback.

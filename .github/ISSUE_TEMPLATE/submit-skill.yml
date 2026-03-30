@@ -1,0 +1,33 @@
+name: Submit a Skill
+description: Submit a Claude Code skill to be indexed and scored in the SkillScore directory.
+title: "[Submission] "
+labels: ["submission"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for submitting a skill! It will be scored against Anthropic's best practices
+        and added to the directory in the next daily index run.
+
+  - type: input
+    id: repo
+    attributes:
+      label: GitHub Repository
+      description: "Repository in owner/repo format"
+      placeholder: "username/my-skills"
+    validations:
+      required: true
+
+  - type: input
+    id: path
+    attributes:
+      label: Skill Path
+      description: "Path to the skill directory within the repo. Leave empty if the skill is at the repo root."
+      placeholder: "skills/my-skill"
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: "Brief description of what the skill does (optional, we'll read the SKILL.md)"
+      placeholder: "A skill that helps with..."
