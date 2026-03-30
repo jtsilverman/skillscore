@@ -118,15 +118,42 @@ func runScan(args []string) {
 
 func runIndex(args []string) {
 	output := "scored-index.json"
-	// Parse --output flag from args
+	localPath := ""
+	localRepo := ""
+	localLabel := "Local Skills"
+
+	// Parse flags from args
 	for i, a := range args {
 		if a == "--output" && i+1 < len(args) {
 			output = args[i+1]
 		}
+		if a == "--local" && i+1 < len(args) {
+			localPath = args[i+1]
+		}
+		if a == "--local-repo" && i+1 < len(args) {
+			localRepo = args[i+1]
+		}
+		if a == "--local-label" && i+1 < len(args) {
+			localLabel = args[i+1]
+		}
 	}
 
-	fmt.Fprintf(os.Stderr, "Indexing skills from curated sources...\n")
-	if err := indexer.RunIndex(output); err != nil {
+	var localSources []indexer.LocalSource
+	if localPath != "" {
+		localSources = append(localSources, indexer.LocalSource{
+			Path:  localPath,
+			Label: localLabel,
+			Repo:  localRepo,
+		})
+	}
+
+	fmt.Fprintf(os.Stderr, "Indexing skills from %d curated sources", len(indexer.DefaultSources))
+	if len(localSources) > 0 {
+		fmt.Fprintf(os.Stderr, " + %d local source(s)", len(localSources))
+	}
+	fmt.Fprintf(os.Stderr, "...\n")
+
+	if err := indexer.RunIndexFull(indexer.DefaultSources, localSources, output); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
