@@ -164,6 +164,16 @@ header p { color: var(--text-dim); font-size: 1rem; }
 .source-official { background: rgba(250,204,21,0.15); color: var(--yellow); }
 .source-local { background: rgba(34,197,94,0.15); color: var(--green); }
 .source-community { background: rgba(59,130,246,0.1); color: var(--blue); }
+
+.category-badge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  background: rgba(139,92,246,0.1);
+  color: var(--purple, #a78bfa);
+}
 .skill-meta a { color: var(--blue); text-decoration: none; }
 .skill-meta a:hover { text-decoration: underline; }
 
