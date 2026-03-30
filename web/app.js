@@ -2,6 +2,8 @@ let skills = [];
 let filtered = [];
 let activeGrade = null;
 let sortBy = 'score';
+let currentPage = 1;
+const PAGE_SIZE = 50;
 
 async function init() {
   try {
@@ -24,7 +26,8 @@ function applyFilters() {
     const matchesQuery = !query ||
       s.name.toLowerCase().includes(query) ||
       (s.description || '').toLowerCase().includes(query) ||
-      (s.repo || '').toLowerCase().includes(query);
+      (s.repo || '').toLowerCase().includes(query) ||
+      (s.source || '').toLowerCase().includes(query);
     const matchesGrade = !activeGrade || gradePrefix(s.grade) === activeGrade;
     return matchesQuery && matchesGrade;
   });
@@ -36,8 +39,21 @@ function applyFilters() {
     return 0;
   });
 
-  document.getElementById('showing-count').textContent = filtered.length;
+  currentPage = 1;
+  updateStats();
   render();
+  renderPagination();
+}
+
+function updateStats() {
+  const start = Math.min((currentPage - 1) * PAGE_SIZE + 1, filtered.length);
+  const end = Math.min(currentPage * PAGE_SIZE, filtered.length);
+  if (filtered.length === 0) {
+    document.getElementById('stats-text').innerHTML = '<strong>0</strong> skills';
+  } else {
+    document.getElementById('stats-text').innerHTML =
+      `Showing <strong>${start}-${end}</strong> of <strong>${filtered.length}</strong> skills`;
+  }
 }
 
 function gradePrefix(grade) {
@@ -57,16 +73,32 @@ function barColor(val) {
   return 'var(--red)';
 }
 
+function sourceClass(source) {
+  if (!source) return 'source-community';
+  const lower = source.toLowerCase();
+  if (lower.includes('official') || lower.includes('anthropic')) return 'source-official';
+  if (lower.includes('local') || lower === 'jtsilverman') return 'source-local';
+  return 'source-community';
+}
+
+function sourceLabel(source) {
+  if (!source) return '';
+  if (source.length > 20) return source.slice(0, 18) + '..';
+  return source;
+}
+
 function render() {
   const list = document.getElementById('skill-list');
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const page = filtered.slice(start, start + PAGE_SIZE);
 
-  if (filtered.length === 0) {
+  if (page.length === 0) {
     list.innerHTML = '<div class="empty-state">No skills match your filters.</div>';
     return;
   }
 
-  list.innerHTML = filtered.map((s, i) => `
-    <div class="skill-card" onclick="toggle(this)" data-idx="${i}">
+  list.innerHTML = page.map((s, i) => `
+    <div class="skill-card" onclick="toggle(this)" data-idx="${start + i}">
       <div class="skill-header">
         <span class="grade-badge ${gradeClass(s.grade)}">${s.grade}</span>
         <span class="skill-name">${esc(s.name)}</span>
@@ -74,8 +106,8 @@ function render() {
       </div>
       ${s.description ? `<div class="skill-desc">${esc(truncate(s.description, 120))}</div>` : ''}
       <div class="skill-meta">
+        ${s.source ? `<span class="source-badge ${sourceClass(s.source)}">${esc(sourceLabel(s.source))}</span>` : ''}
         ${s.repo ? `<a href="https://github.com/${s.repo}" target="_blank">${s.repo}</a>` : ''}
-        ${s.source ? `<span>${esc(s.source)}</span>` : ''}
       </div>
       <div class="skill-details">
         ${renderDims(s.dimensions)}
@@ -113,6 +145,32 @@ function renderSuggestions(suggestions) {
       const icon = s.priority === 'high' ? '\u25cf' : s.priority === 'medium' ? '\u25d0' : '\u25cb';
       return `<div>${icon} ${esc(s.message)}</div>`;
     }).join('') + '</div>';
+}
+
+function renderPagination() {
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const pag = document.getElementById('pagination');
+
+  if (totalPages <= 1) {
+    pag.innerHTML = '';
+    return;
+  }
+
+  pag.innerHTML = `
+    <button onclick="goPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>Prev</button>
+    <span class="page-info">Page ${currentPage} of ${totalPages}</span>
+    <button onclick="goPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>Next</button>
+  `;
+}
+
+function goPage(page) {
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  if (page < 1 || page > totalPages) return;
+  currentPage = page;
+  updateStats();
+  render();
+  renderPagination();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function toggle(el) {
