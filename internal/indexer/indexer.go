@@ -62,11 +62,17 @@ func RunIndexFull(sources []Source, localSources []LocalSource, outputPath strin
 	var sourceLabels []string
 	var wg sync.WaitGroup
 
+	// Process GitHub sources with limited concurrency to avoid abuse detection.
+	// The Tree API calls are serialized, but individual skill fetches within
+	// each source run concurrently (via raw.githubusercontent.com CDN).
+	sem := make(chan struct{}, 3) // max 3 sources at a time
 	for _, src := range sources {
 		sourceLabels = append(sourceLabels, fmt.Sprintf("%s/%s", src.Owner, src.Repo))
 		wg.Add(1)
 		go func(s Source) {
 			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
 			results := indexSource(s)
 			mu.Lock()
 			entries = append(entries, results...)
@@ -74,7 +80,7 @@ func RunIndexFull(sources []Source, localSources []LocalSource, outputPath strin
 		}(src)
 	}
 
-	// Index local sources
+	// Index local sources (no rate limit concern)
 	for _, ls := range localSources {
 		sourceLabels = append(sourceLabels, ls.Label)
 		wg.Add(1)
@@ -157,53 +163,64 @@ func indexLocalSource(ls LocalSource) []IndexEntry {
 }
 
 func indexSource(src Source) []IndexEntry {
-	var entries []IndexEntry
-
-	// Try to discover SKILL.md files by fetching the directory listing
-	spec := fmt.Sprintf("%s/%s", src.Owner, src.Repo)
-	if src.Path != "" {
-		spec += "/" + src.Path
-	}
+	fmt.Fprintf(os.Stderr, "Indexing %s/%s...\n", src.Owner, src.Repo)
 
 	// Discover skill directories using GitHub API
 	skillPaths := discoverSkills(src)
 
+	// Fetch and score skills with limited concurrency
+	var mu sync.Mutex
+	var entries []IndexEntry
+	var wg sync.WaitGroup
+	fetchSem := make(chan struct{}, 10) // max 10 concurrent fetches per source
+
 	for _, skillPath := range skillPaths {
-		fullSpec := fmt.Sprintf("%s/%s/%s", src.Owner, src.Repo, skillPath)
-		tmpDir, cleanup, err := gh.FetchSkill(fullSpec)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "  Skip %s: %v\n", fullSpec, err)
-			continue
-		}
+		wg.Add(1)
+		go func(sp string) {
+			defer wg.Done()
+			fetchSem <- struct{}{}
+			defer func() { <-fetchSem }()
 
-		report, err := analyzer.AnalyzeSkill(tmpDir)
-		cleanup()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "  Skip %s: %v\n", fullSpec, err)
-			continue
-		}
+			fullSpec := fmt.Sprintf("%s/%s/%s", src.Owner, src.Repo, sp)
+			tmpDir, cleanup, err := gh.FetchSkill(fullSpec)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "  Skip %s: %v\n", fullSpec, err)
+				return
+			}
 
-		entries = append(entries, IndexEntry{
-			Name:        report.Name,
-			Description: report.Desc,
-			Repo:        fmt.Sprintf("%s/%s", src.Owner, src.Repo),
-			Path:        skillPath,
-			Grade:       report.Overall.Grade,
-			Score:       report.Overall.Points,
-			Dimensions: IndexDimensions{
-				Structure:   report.Structure.Points,
-				Description: report.Description.Points,
-				Content:     report.Content.Points,
-				Engineering: report.Engineering.Points,
-				Packaging:   report.Packaging.Points,
-			},
-			Suggestions: report.Suggestions,
-			Source:      src.Label,
-		})
+			report, err := analyzer.AnalyzeSkill(tmpDir)
+			cleanup()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "  Skip %s: %v\n", fullSpec, err)
+				return
+			}
 
-		fmt.Fprintf(os.Stderr, "  %s %s (%.0f)\n", report.Overall.Grade, report.Name, report.Overall.Points)
+			entry := IndexEntry{
+				Name:        report.Name,
+				Description: report.Desc,
+				Repo:        fmt.Sprintf("%s/%s", src.Owner, src.Repo),
+				Path:        sp,
+				Grade:       report.Overall.Grade,
+				Score:       report.Overall.Points,
+				Dimensions: IndexDimensions{
+					Structure:   report.Structure.Points,
+					Description: report.Description.Points,
+					Content:     report.Content.Points,
+					Engineering: report.Engineering.Points,
+					Packaging:   report.Packaging.Points,
+				},
+				Suggestions: report.Suggestions,
+				Source:      src.Label,
+			}
+
+			mu.Lock()
+			entries = append(entries, entry)
+			mu.Unlock()
+		}(skillPath)
 	}
 
+	wg.Wait()
+	fmt.Fprintf(os.Stderr, "  %s/%s: indexed %d of %d skills\n", src.Owner, src.Repo, len(entries), len(skillPaths))
 	return entries
 }
 
