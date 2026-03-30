@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/jtsilverman/skillscore/internal/analyzer"
@@ -136,6 +137,29 @@ func indexSource(src Source) []IndexEntry {
 }
 
 func discoverSkills(src Source) []string {
+	// Use Git Tree API (no 1000-item cap) with Contents API fallback
+	allPaths, err := gh.TreeDiscover(src.Owner, src.Repo)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "  Tree API failed for %s/%s, falling back to Contents API: %v\n", src.Owner, src.Repo, err)
+		return discoverSkillsFallback(src)
+	}
+
+	// Filter paths to those under src.Path prefix
+	var paths []string
+	for _, p := range allPaths {
+		if src.Path == "" {
+			paths = append(paths, p)
+		} else if strings.HasPrefix(p, src.Path+"/") || p == src.Path {
+			paths = append(paths, p)
+		}
+	}
+
+	fmt.Fprintf(os.Stderr, "  Discovered %d skills in %s/%s\n", len(paths), src.Owner, src.Repo)
+	return paths
+}
+
+// discoverSkillsFallback uses the Contents API (capped at 1000 items) as a fallback.
+func discoverSkillsFallback(src Source) []string {
 	basePath := src.Path
 	entries, err := gh.ListDir(src.Owner, src.Repo, basePath)
 	if err != nil {
