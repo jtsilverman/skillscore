@@ -1,9 +1,65 @@
 let skills = [];
 let filtered = [];
 let activeGrade = null;
-let sortBy = 'score';
+let sortBy = 'relevance';
 let currentPage = 1;
 const PAGE_SIZE = 50;
+
+// BM25 parameters
+const K1 = 1.5;
+const B = 0.75;
+
+// Precomputed BM25 index
+let bm25 = { docs: [], avgDl: 0, df: {}, N: 0 };
+
+function tokenize(text) {
+  return (text || '').toLowerCase().replace(/[^a-z0-9]/g, ' ').split(/\s+/).filter(t => t.length > 1);
+}
+
+function buildBM25Index(skills) {
+  const docs = skills.map(s => {
+    // Weight name tokens 3x, description 2x, source 1x
+    const nameTokens = tokenize(s.name);
+    const descTokens = tokenize(s.description);
+    const sourceTokens = tokenize(s.source);
+    const categoryTokens = tokenize(s.category);
+    const tokens = [...nameTokens, ...nameTokens, ...nameTokens, ...descTokens, ...descTokens, ...sourceTokens, ...categoryTokens];
+    const tf = {};
+    for (const t of tokens) tf[t] = (tf[t] || 0) + 1;
+    return { tf, dl: tokens.length };
+  });
+
+  const N = docs.length;
+  const avgDl = docs.reduce((s, d) => s + d.dl, 0) / (N || 1);
+  const df = {};
+  for (const doc of docs) {
+    for (const term of Object.keys(doc.tf)) {
+      df[term] = (df[term] || 0) + 1;
+    }
+  }
+
+  bm25 = { docs, avgDl, df, N };
+}
+
+function scoreBM25(query) {
+  const terms = tokenize(query);
+  if (terms.length === 0) return null;
+
+  const scores = new Float64Array(bm25.N);
+  for (const term of terms) {
+    const docFreq = bm25.df[term] || 0;
+    if (docFreq === 0) continue;
+    const idf = Math.log(1 + (bm25.N - docFreq + 0.5) / (docFreq + 0.5));
+
+    for (let i = 0; i < bm25.N; i++) {
+      const doc = bm25.docs[i];
+      const tf = doc.tf[term] || 0;
+      if (tf === 0) continue;
+      scores[i] += idf * (tf * (K1 + 1)) / (tf + K1 * (1 - B + B * doc.dl / bm25.avgDl));
+    }
+  }
+  return scores;
+}
 
 async function init() {
   try {
@@ -12,6 +68,20 @@ async function init() {
     skills = data.skills || [];
     document.getElementById('total-count').textContent = skills.length;
     document.getElementById('source-count').textContent = (data.sources || []).length;
+
+    // Build BM25 index
+    buildBM25Index(skills);
+
+    // Populate category filter
+    const categories = [...new Set(skills.map(s => s.category).filter(Boolean))].sort();
+    const catSelect = document.getElementById('category-filter');
+    for (const cat of categories) {
+      const opt = document.createElement('option');
+      opt.value = cat;
+      opt.textContent = `${cat} (${skills.filter(s => s.category === cat).length})`;
+      catSelect.appendChild(opt);
+    }
+
     applyFilters();
   } catch (e) {
     document.getElementById('skill-list').innerHTML =
@@ -20,22 +90,47 @@ async function init() {
 }
 
 function applyFilters() {
-  const query = document.getElementById('search').value.toLowerCase();
+  const query = document.getElementById('search').value.trim();
+  const category = document.getElementById('category-filter').value;
 
-  filtered = skills.filter(s => {
-    const matchesQuery = !query ||
-      s.name.toLowerCase().includes(query) ||
-      (s.description || '').toLowerCase().includes(query) ||
-      (s.repo || '').toLowerCase().includes(query) ||
-      (s.source || '').toLowerCase().includes(query);
-    const matchesGrade = !activeGrade || gradePrefix(s.grade) === activeGrade;
-    return matchesQuery && matchesGrade;
-  });
+  // Compute BM25 relevance scores
+  const relevanceScores = scoreBM25(query);
+  const hasQuery = relevanceScores !== null;
 
+  // Default to relevance sort when there's a query, score sort otherwise
+  const effectiveSort = sortBy === 'relevance' && !hasQuery ? 'score' : sortBy;
+
+  filtered = [];
+  for (let i = 0; i < skills.length; i++) {
+    const s = skills[i];
+
+    // Category filter
+    if (category && s.category !== category) continue;
+
+    // Grade filter
+    if (activeGrade && gradePrefix(s.grade) !== activeGrade) continue;
+
+    // Query filter: only include skills with positive BM25 score
+    if (hasQuery && relevanceScores[i] <= 0) continue;
+
+    filtered.push({
+      skill: s,
+      relevance: hasQuery ? relevanceScores[i] : 0,
+      idx: i,
+    });
+  }
+
+  // Sort
   filtered.sort((a, b) => {
-    if (sortBy === 'score') return b.score - a.score;
-    if (sortBy === 'name') return a.name.localeCompare(b.name);
-    if (sortBy === 'repo') return (a.repo || '').localeCompare(b.repo || '');
+    if (effectiveSort === 'relevance' && hasQuery) {
+      // Blend: 70% relevance, 30% quality score (normalized)
+      const ra = a.relevance * 0.7 + (a.skill.score / 100) * 0.3;
+      const rb = b.relevance * 0.7 + (b.skill.score / 100) * 0.3;
+      return rb - ra;
+    }
+    if (effectiveSort === 'score') return b.skill.score - a.skill.score;
+    if (effectiveSort === 'name') return a.skill.name.localeCompare(b.skill.name);
+    if (effectiveSort === 'repo') return (a.skill.repo || '').localeCompare(b.skill.repo || '');
     return 0;
   });
 
@@ -93,11 +188,13 @@ function render() {
   const page = filtered.slice(start, start + PAGE_SIZE);
 
   if (page.length === 0) {
-    list.innerHTML = '<div class="empty-state">No skills match your filters.</div>';
+    list.innerHTML = '<div class="empty-state">No skills match your search.</div>';
     return;
   }
 
-  list.innerHTML = page.map((s, i) => `
+  list.innerHTML = page.map((item, i) => {
+    const s = item.skill;
+    return `
     <div class="skill-card" onclick="toggle(this)" data-idx="${start + i}">
       <div class="skill-header">
         <span class="grade-badge ${gradeClass(s.grade)}">${s.grade}</span>
@@ -106,6 +203,7 @@ function render() {
       </div>
       ${s.description ? `<div class="skill-desc">${esc(truncate(s.description, 120))}</div>` : ''}
       <div class="skill-meta">
+        ${s.category ? `<span class="category-badge">${esc(s.category)}</span>` : ''}
         ${s.source ? `<span class="source-badge ${sourceClass(s.source)}">${esc(sourceLabel(s.source))}</span>` : ''}
         ${s.repo ? `<a href="https://github.com/${s.repo}" target="_blank">${s.repo}</a>` : ''}
       </div>
@@ -113,8 +211,8 @@ function render() {
         ${renderDims(s.dimensions)}
         ${renderSuggestions(s.suggestions)}
       </div>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
 }
 
 function renderDims(d) {

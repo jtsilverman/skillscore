@@ -20,7 +20,10 @@
     </div>
 
     <div class="controls">
-      <input type="text" id="search" class="search" placeholder="Search skills..." oninput="applyFilters()">
+      <input type="text" id="search" class="search" placeholder="Find a skill... (e.g. &quot;help me write tests&quot;)" oninput="applyFilters()">
+      <select id="category-filter" class="sort-select" onchange="applyFilters()">
+        <option value="">All Categories</option>
+      </select>
       <div class="filter-group">
         <button class="filter-btn" onclick="setGradeFilter('A', this)">A</button>
         <button class="filter-btn" onclick="setGradeFilter('B', this)">B</button>
@@ -29,6 +32,7 @@
         <button class="filter-btn" onclick="setGradeFilter('F', this)">F</button>
       </div>
       <select class="sort-select" onchange="setSort(this.value)">
+        <option value="relevance">Sort by Relevance</option>
         <option value="score">Sort by Score</option>
         <option value="name">Sort by Name</option>
         <option value="repo">Sort by Repo</option>

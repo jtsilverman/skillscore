@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -34,6 +35,7 @@ Usage:
   skillscore [flags] github <owner/repo/path>   Score a GitHub skill
   skillscore scan [flags] <dir>                  Score all skills in a directory
   skillscore index [flags]                       Index and score curated skill repos
+  skillscore submit <owner/repo/path>            Submit a skill to the directory
 
 Flags:
 `)
@@ -57,6 +59,8 @@ func main() {
 		runIndex(args[1:])
 	case "github":
 		runGitHub(args[1:])
+	case "submit":
+		runSubmit(args[1:])
 	default:
 		runLocal(args[0])
 	}
@@ -196,6 +200,81 @@ func outputReport(r *analyzer.SkillReport) {
 		return
 	}
 	fmt.Println(report.RenderFull(r, verbose))
+}
+
+func runSubmit(args []string) {
+	if len(args) == 0 {
+		fmt.Fprintln(os.Stderr, "Usage: skillscore submit <owner/repo/path>")
+		fmt.Fprintln(os.Stderr, "Example: skillscore submit anthropics/skills/skills/deploy-app")
+		os.Exit(1)
+	}
+
+	spec := args[0]
+	parts := strings.SplitN(spec, "/", 3)
+	if len(parts) < 2 {
+		fmt.Fprintln(os.Stderr, "Error: spec must be at least owner/repo")
+		os.Exit(1)
+	}
+
+	repo := parts[0] + "/" + parts[1]
+	skillPath := ""
+	if len(parts) > 2 {
+		skillPath = parts[2]
+	}
+
+	// Score the skill first
+	fmt.Fprintf(os.Stderr, "Scoring %s...\n", spec)
+	tmpDir, cleanup, err := github.FetchSkill(spec)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error fetching skill: %v\n", err)
+		os.Exit(1)
+	}
+
+	r, err := analyzer.AnalyzeSkill(tmpDir)
+	cleanup()
+
+	scoreInfo := ""
+	if err == nil {
+		scoreInfo = fmt.Sprintf("Pre-scored: %s (%.0f/100)", r.Overall.Grade, r.Overall.Points)
+		fmt.Fprintf(os.Stderr, "%s\n", scoreInfo)
+	}
+
+	// Build the issue URL
+	url := fmt.Sprintf(
+		"https://github.com/jtsilverman/skillscore/issues/new?template=submit-skill.yml&title=%s&labels=submission",
+		"[Submission] "+repo,
+	)
+
+	fmt.Printf("Submit this skill to the SkillScore directory:\n\n")
+	fmt.Printf("  Repo: %s\n", repo)
+	if skillPath != "" {
+		fmt.Printf("  Path: %s\n", skillPath)
+	}
+	if scoreInfo != "" {
+		fmt.Printf("  %s\n", scoreInfo)
+	}
+	fmt.Printf("\n  Open: %s\n", url)
+
+	// Try to open in browser
+	if err := openBrowser(url); err != nil {
+		fmt.Fprintf(os.Stderr, "\nCouldn't open browser automatically. Copy the URL above.\n")
+	}
+}
+
+func openBrowser(url string) error {
+	// macOS
+	return execCommand("open", url)
+}
+
+func execCommand(name string, args ...string) error {
+	cmd := execCmd(name, args...)
+	return cmd.Run()
+}
+
+var execCmd = newCommand
+
+func newCommand(name string, args ...string) *exec.Cmd {
+	return exec.Command(name, args...)
 }
 
 // findSkillDirs walks a directory tree and returns paths containing SKILL.md.

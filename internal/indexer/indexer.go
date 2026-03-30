@@ -24,6 +24,7 @@ type IndexEntry struct {
 	Dimensions  IndexDimensions     `json:"dimensions"`
 	Suggestions []analyzer.Suggestion `json:"suggestions"`
 	Source      string              `json:"source"`
+	Category    string              `json:"category"`
 }
 
 // IndexDimensions holds per-dimension scores for the web UI.
@@ -154,6 +155,7 @@ func indexLocalSource(ls LocalSource) []IndexEntry {
 				},
 				Suggestions: report.Suggestions,
 				Source:      ls.Label,
+				Category:    categorize(report.Name, report.Desc),
 			})
 
 			fmt.Fprintf(os.Stderr, "  %s %s (%.0f)\n", report.Overall.Grade, report.Name, report.Overall.Points)
@@ -214,6 +216,7 @@ func indexSource(src Source) []IndexEntry {
 				},
 				Suggestions: report.Suggestions,
 				Source:      src.Label,
+				Category:    categorize(report.Name, report.Desc),
 			}
 
 			mu.Lock()
