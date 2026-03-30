@@ -1,4 +1,4 @@
 skillscore
 dist/
-scored-index.json
+/scored-index.json
 *.exe

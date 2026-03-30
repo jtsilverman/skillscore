@@ -105,6 +105,90 @@ func ListDir(owner, repo, path string) ([]DirEntry, error) {
 	return fetchDirListing(client, token, owner, repo, path)
 }
 
+// treeEntry represents a single entry from the Git Tree API response.
+type treeEntry struct {
+	Path string `json:"path"`
+	Type string `json:"type"` // "blob" or "tree"
+}
+
+// treeResponse represents the Git Tree API response.
+type treeResponse struct {
+	Tree      []treeEntry `json:"tree"`
+	Truncated bool        `json:"truncated"`
+}
+
+// TreeDiscover returns all directory paths containing SKILL.md in a repo.
+// Uses the Git Tree API (/git/trees/:sha?recursive=1) which has no 1000-item cap.
+// Returns paths like "skills/deploy-app" for each directory containing a SKILL.md.
+func TreeDiscover(owner, repo string) ([]string, error) {
+	client := &http.Client{}
+	token := os.Getenv("GITHUB_TOKEN")
+
+	// Try common default branch names
+	branches := []string{"main", "master", "HEAD"}
+	var treeResp treeResponse
+	var lastErr error
+
+	for _, branch := range branches {
+		url := fmt.Sprintf("https://api.github.com/repos/%s/%s/git/trees/%s?recursive=1", owner, repo, branch)
+		req, err := http.NewRequest("GET", url, nil)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		req.Header.Set("Accept", "application/vnd.github.v3+json")
+		if token != "" {
+			req.Header.Set("Authorization", "token "+token)
+		}
+
+		resp, err := client.Do(req)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode == 404 {
+			lastErr = fmt.Errorf("branch %q not found", branch)
+			continue
+		}
+		if resp.StatusCode != 200 {
+			body, _ := io.ReadAll(resp.Body)
+			lastErr = fmt.Errorf("HTTP %d for tree %s/%s@%s: %s", resp.StatusCode, owner, repo, branch, string(body))
+			continue
+		}
+
+		if err := json.NewDecoder(resp.Body).Decode(&treeResp); err != nil {
+			lastErr = fmt.Errorf("decode tree response: %w", err)
+			continue
+		}
+		lastErr = nil
+		break
+	}
+
+	if lastErr != nil {
+		return nil, fmt.Errorf("tree discover %s/%s: %w", owner, repo, lastErr)
+	}
+
+	if treeResp.Truncated {
+		fmt.Fprintf(os.Stderr, "  Warning: tree for %s/%s was truncated\n", owner, repo)
+	}
+
+	// Find all paths ending with SKILL.md and return their parent directories
+	var paths []string
+	for _, entry := range treeResp.Tree {
+		if entry.Type == "blob" && strings.HasSuffix(entry.Path, "/SKILL.md") {
+			dir := strings.TrimSuffix(entry.Path, "/SKILL.md")
+			paths = append(paths, dir)
+		} else if entry.Type == "blob" && entry.Path == "SKILL.md" {
+			// SKILL.md at repo root
+			paths = append(paths, "")
+		}
+	}
+
+	return paths, nil
+}
+
 func fetchFile(client *http.Client, token, owner, repo, path string) ([]byte, error) {
 	url := fmt.Sprintf("https://raw.githubusercontent.com/%s/%s/main/%s", owner, repo, path)
 	req, err := http.NewRequest("GET", url, nil)
