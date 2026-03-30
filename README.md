@@ -10,6 +10,8 @@ There are 60,000+ Claude Code skills on GitHub. They're sorted by stars. Stars m
 
 SkillScore turns Anthropic's qualitative [authoring checklist](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices) into a quantitative scoring algorithm. Point it at any skill and get an actionable quality grade.
 
+The **[web directory](https://jtsilverman.github.io/skillscore)** indexes **3,000+ skills** from 10 curated sources, scored and searchable. Want your skill in the directory? [Submit it](https://github.com/jtsilverman/skillscore/issues/new?template=submit-skill.yml).
+
 ## Demo
 
 ![SkillScore output](assets/demo.png)
@@ -60,6 +62,9 @@ skillscore --verbose ./my-skill/
 
 # Build the scored directory index
 skillscore index --output web/scored-index.json
+
+# Include local skills in the index
+skillscore index --local ~/.claude/skills/ --local-label "My Skills" --output web/scored-index.json
 ```
 
 ## Scoring
