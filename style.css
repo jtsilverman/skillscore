@@ -1,0 +1,256 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: #0f172a;
+  --surface: #1e293b;
+  --border: #334155;
+  --text: #e2e8f0;
+  --text-dim: #94a3b8;
+  --green: #22c55e;
+  --light-green: #86efac;
+  --yellow: #facc15;
+  --orange: #f97316;
+  --red: #ef4444;
+  --blue: #3b82f6;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+.container { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+header {
+  text-align: center;
+  margin-bottom: 2.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+header h1 { font-size: 2rem; margin-bottom: 0.5rem; }
+header h1 span { color: var(--green); }
+header p { color: var(--text-dim); font-size: 1rem; }
+
+.controls {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.search {
+  flex: 1;
+  min-width: 200px;
+  padding: 0.6rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 0.95rem;
+  outline: none;
+}
+
+.search:focus { border-color: var(--blue); }
+
+.filter-group { display: flex; gap: 0.4rem; align-items: center; }
+
+.filter-btn {
+  padding: 0.4rem 0.8rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.15s;
+}
+
+.filter-btn:hover { border-color: var(--text-dim); color: var(--text); }
+.filter-btn.active { border-color: var(--blue); color: var(--blue); background: rgba(59,130,246,0.1); }
+
+.sort-select {
+  padding: 0.5rem 0.8rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.stats {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+  color: var(--text-dim);
+  font-size: 0.9rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.stats strong { color: var(--text); }
+
+.submit-btn {
+  margin-left: auto;
+  padding: 0.4rem 0.9rem;
+  border: 1px solid var(--green);
+  border-radius: 6px;
+  color: var(--green);
+  text-decoration: none;
+  font-size: 0.85rem;
+  transition: all 0.15s;
+}
+
+.submit-btn:hover {
+  background: rgba(34,197,94,0.1);
+  text-decoration: none;
+}
+
+.skill-list { display: flex; flex-direction: column; gap: 0.6rem; }
+
+.skill-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem 1.2rem;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.skill-card:hover { border-color: var(--text-dim); }
+
+.skill-header {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin-bottom: 0.4rem;
+}
+
+.grade-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.grade-A { background: rgba(34,197,94,0.15); color: var(--green); }
+.grade-B { background: rgba(134,239,172,0.15); color: var(--light-green); }
+.grade-C { background: rgba(250,204,21,0.15); color: var(--yellow); }
+.grade-D { background: rgba(249,115,22,0.15); color: var(--orange); }
+.grade-F { background: rgba(239,68,68,0.15); color: var(--red); }
+
+.skill-name { font-weight: 600; font-size: 1.05rem; }
+.skill-score { color: var(--text-dim); font-size: 0.85rem; margin-left: auto; }
+.skill-desc { color: var(--text-dim); font-size: 0.9rem; margin-bottom: 0.5rem; padding-left: 3.2rem; }
+.skill-meta { display: flex; gap: 1rem; padding-left: 3.2rem; font-size: 0.8rem; color: var(--text-dim); align-items: center; flex-wrap: wrap; }
+
+.source-badge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.source-official { background: rgba(250,204,21,0.15); color: var(--yellow); }
+.source-local { background: rgba(34,197,94,0.15); color: var(--green); }
+.source-community { background: rgba(59,130,246,0.1); color: var(--blue); }
+
+.category-badge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  background: rgba(139,92,246,0.1);
+  color: var(--purple, #a78bfa);
+}
+.skill-meta a { color: var(--blue); text-decoration: none; }
+.skill-meta a:hover { text-decoration: underline; }
+
+.skill-details {
+  display: none;
+  margin-top: 0.8rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid var(--border);
+  padding-left: 3.2rem;
+}
+
+.skill-card.expanded .skill-details { display: block; }
+
+.dim-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.3rem;
+  font-size: 0.85rem;
+}
+
+.dim-label { width: 90px; color: var(--text-dim); }
+
+.dim-bar {
+  flex: 1;
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.dim-bar-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
+
+.dim-score { width: 30px; text-align: right; font-size: 0.8rem; }
+
+.empty-state {
+  text-align: center;
+  padding: 3rem;
+  color: var(--text-dim);
+}
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+  font-size: 0.9rem;
+}
+
+.pagination button {
+  padding: 0.4rem 0.8rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.pagination button:hover { border-color: var(--text-dim); }
+.pagination button:disabled { opacity: 0.3; cursor: default; }
+.pagination .page-info { color: var(--text-dim); }
+
+footer {
+  text-align: center;
+  margin-top: 3rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+  color: var(--text-dim);
+  font-size: 0.85rem;
+}
+
+footer a { color: var(--blue); text-decoration: none; }
+footer a:hover { text-decoration: underline; }
+
+@media (max-width: 640px) {
+  .controls { flex-direction: column; }
+  .skill-desc, .skill-meta, .skill-details { padding-left: 0; }
+}
