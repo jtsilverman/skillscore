@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SkillScore - Claude Code Skills Directory</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1><span>SkillScore</span> Directory</h1>
+      <p>Claude Code skills scored against Anthropic's official best practices</p>
+    </header>
+
+    <div class="stats">
+      <span id="stats-text"><strong id="showing-count">0</strong> of <strong id="total-count">0</strong> skills</span>
+      <span>From <strong id="source-count">0</strong> sources</span>
+      <a href="https://github.com/jtsilverman/skillscore/issues/new?template=submit-skill.yml" class="submit-btn" target="_blank">+ Submit Your Skill</a>
+    </div>
+
+    <div class="controls">
+      <input type="text" id="search" class="search" placeholder="Find a skill... (e.g. &quot;help me write tests&quot;)" oninput="applyFilters()">
+      <select id="category-filter" class="sort-select" onchange="applyFilters()">
+        <option value="">All Categories</option>
+      </select>
+      <div class="filter-group">
+        <button class="filter-btn" onclick="setGradeFilter('A', this)">A</button>
+        <button class="filter-btn" onclick="setGradeFilter('B', this)">B</button>
+        <button class="filter-btn" onclick="setGradeFilter('C', this)">C</button>
+        <button class="filter-btn" onclick="setGradeFilter('D', this)">D</button>
+        <button class="filter-btn" onclick="setGradeFilter('F', this)">F</button>
+      </div>
+      <select class="sort-select" onchange="setSort(this.value)">
+        <option value="relevance">Sort by Relevance</option>
+        <option value="score">Sort by Score</option>
+        <option value="name">Sort by Name</option>
+        <option value="repo">Sort by Repo</option>
+      </select>
+    </div>
+
+    <div id="skill-list" class="skill-list">
+      <div class="empty-state">Loading...</div>
+    </div>
+
+    <div id="pagination" class="pagination"></div>
+
+    <footer>
+      <p>Built with <a href="https://github.com/jtsilverman/skillscore">SkillScore</a>. Scores update daily.</p>
+    </footer>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
